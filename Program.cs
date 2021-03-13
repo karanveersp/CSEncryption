@@ -41,7 +41,7 @@ namespace CSEncryption {
             string cipherText = AES256.Encrypt(plainText, key);
 
             var dirPath = Path.GetDirectoryName(path);
-            var encFileName = Path.GetFileNameWithoutExtension(path) + "_encrypted" + Path.GetExtension(path);
+            var encFileName = Path.GetFileNameWithoutExtension(path) + "_cipher" + Path.GetExtension(path);
             var encFilePath = Path.Combine(dirPath, encFileName);
 
             return () => {
@@ -55,9 +55,9 @@ namespace CSEncryption {
 
             var fileName = Path.GetFileNameWithoutExtension(path);
             var dirPath = Path.GetDirectoryName(path);
-            string decFileName = fileName.Contains("encrypted")
-                ? fileName.Replace("encrypted", "decrypted") + Path.GetExtension(path)
-                : fileName + "_decrypted" + Path.GetExtension(path);
+            string decFileName = fileName.Contains("cipher")
+                ? fileName.Replace("cipher", "plain") + Path.GetExtension(path)
+                : fileName + "_plain" + Path.GetExtension(path);
             var decFilePath = Path.Combine(dirPath, decFileName);
 
             return () => {
