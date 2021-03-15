@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 
-using SimpleAES;
-
-namespace CSEncryption {
+namespace EncryptionApp {
+    using Util;
+    
     class Program {
 
         readonly struct Args {
@@ -37,34 +37,6 @@ namespace CSEncryption {
             return new Args(isEncryptMode, key, path);
         }
 
-        private static Action encrypt(string plainText, string key, string path) {
-            string cipherText = AES256.Encrypt(plainText, key);
-
-            var dirPath = Path.GetDirectoryName(path);
-            var encFileName = Path.GetFileNameWithoutExtension(path) + "_cipher" + Path.GetExtension(path);
-            var encFilePath = Path.Combine(dirPath, encFileName);
-
-            return () => {
-                File.WriteAllText(encFilePath, cipherText);
-                Console.WriteLine("Wrote encrypted file to: {0}", encFilePath);
-            };
-        }
-
-        private static Action decrypt(string cipherText, string key, string path) {
-            string plaintext = AES256.Decrypt(cipherText, key);
-
-            var fileName = Path.GetFileNameWithoutExtension(path);
-            var dirPath = Path.GetDirectoryName(path);
-            string decFileName = fileName.Contains("cipher")
-                ? fileName.Replace("cipher", "plain") + Path.GetExtension(path)
-                : fileName + "_plain" + Path.GetExtension(path);
-            var decFilePath = Path.Combine(dirPath, decFileName);
-
-            return () => {
-                File.WriteAllText(decFilePath, plaintext);
-                Console.WriteLine("Wrote decrypted file to: {0}", decFilePath);
-            };
-        }
 
         static void Main(string[] cliArgs) {
             Args args = GetArgs(cliArgs);
@@ -87,11 +59,11 @@ namespace CSEncryption {
             }
 
             try {
-                Action writeFile = args.isEncryptMode
-                    ? encrypt(text, args.key, args.path)
-                    : decrypt(text, args.key, args.path);
+                WriteEffect writeFile = args.isEncryptMode
+                    ? AESFile.encrypt(text, args.key, args.path)
+                    : AESFile.decrypt(text, args.key, args.path);
                 try {
-                    writeFile();
+                    writeFile.write();
                 } catch {
                     Console.WriteLine("Exception while writing file");
                 }
