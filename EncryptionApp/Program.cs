@@ -66,12 +66,15 @@ namespace EncryptionApp {
                     writeFile.write();
                 } catch {
                     Console.WriteLine("Exception while writing file");
+                    System.Environment.Exit(6);
                 }
             } catch {
                 if (args.isEncryptMode) {
                     Console.WriteLine("Exception while encrypting data.");
+                    System.Environment.Exit(4);
                 } else {
                     Console.WriteLine("Exception while decrypting data. Key may be invalid.");
+                    System.Environment.Exit(5);
                 }
             }
         }
