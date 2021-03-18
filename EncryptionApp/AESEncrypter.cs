@@ -9,8 +9,11 @@ namespace EncryptionApp {
         public static WriteEffect encrypt(string plainText, string key, string path) {
             string cipherText = AES256.Encrypt(plainText, key);
 
+            var fileName = Path.GetFileNameWithoutExtension(path);
             var dirPath = Path.GetDirectoryName(path);
-            var encFileName = Path.GetFileNameWithoutExtension(path) + "_cipher" + Path.GetExtension(path);
+            string encFileName = fileName.Contains("plain") || fileName.Contains("cipher")
+                ? fileName.Replace("plain", "cipher") + Path.GetExtension(path)
+                : fileName + "_cipher" + Path.GetExtension(path);
             var encFilePath = Path.Combine(dirPath, encFileName);
 
             return new WriteEffect(cipherText, encFilePath, () => Console.WriteLine("Wrote encrypted file to: {0}", encFilePath));
@@ -21,7 +24,7 @@ namespace EncryptionApp {
 
             var fileName = Path.GetFileNameWithoutExtension(path);
             var dirPath = Path.GetDirectoryName(path);
-            string decFileName = fileName.Contains("cipher")
+            string decFileName = fileName.Contains("cipher") || fileName.Contains("plain")
                 ? fileName.Replace("cipher", "plain") + Path.GetExtension(path)
                 : fileName + "_plain" + Path.GetExtension(path);
             var decFilePath = Path.Combine(dirPath, decFileName);
