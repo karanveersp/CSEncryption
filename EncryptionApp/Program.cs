@@ -1,82 +1,125 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using CommandLine;
+using CommandLine.Text;
+using EncryptionApp.Util;
+using LanguageExt;
 
 namespace EncryptionApp {
-    using Util;
-    
+
     class Program {
 
-        readonly struct Args {
-            public readonly bool isEncryptMode { get; }
-            public readonly string key { get; }
-            public readonly string path { get; }
+        [Verb("file", HelpText = "Act on file(s).")]
+        class FileOptions {
+            [Option('e', "encrypt", Required = false, HelpText = "To encrypt file contents. Will decrypt if not provided.", Default = false)]
+            public bool IsEncryptMode { get; set; }
 
-            public Args(bool isEncryptMode, string key, string path) {
-                this.isEncryptMode = isEncryptMode;
-                this.key = key;
-                this.path = Path.GetFullPath(path);
+            [Option('k', "key", Required = true, HelpText = "Key for encryption/decryption.")]
+            public string Key { get; set; }
+
+            [Option('p', "path", Required = true, HelpText = ".txt file path target. If path is a directory, all .txt files inside are targeted using the same key.")]
+            public string Path { get; set; }
+
+            [Option('o', "output", Required = true, HelpText = "Path to output directory or file. If directory, the output file will have the same name as the input file.")]
+            public string OutputPath { get; set; }
+
+            [Usage(ApplicationAlias = "csencryption")]
+            public static IEnumerable<Example> Examples {
+                get {
+                    yield return new Example("Encrypt a file", new FileOptions { IsEncryptMode = true, Key = "secretKey", Path = "path/to/plain.txt", OutputPath = "out/dir" });
+                    yield return new Example("Decrypt a file", new FileOptions { Key = "secretKey", Path = "path/to/cipher.txt", OutputPath = "out/dir/plain.txt" });
+                    yield return new Example("Encrypt all .txt files in a folder", new FileOptions { IsEncryptMode = true, Key = "secretKey", Path = "path/to/dir", OutputPath = "out/dir" });
+                    yield return new Example("Decrypt all .txt files in a folder", new FileOptions { Key = "secretKey", Path = "path/to/dir", OutputPath = "out/dir" });
+                }
             }
         }
 
-        private static Args GetArgs(string[] args) {
-            var argsList = new List<string>(args);
-            bool isEncryptMode = argsList.Contains("-e");
+        [Verb("string", HelpText = "Act on given string.")]
+        class StringOptions {
+            [Option('e', "encrypt", Required = false, HelpText = "To encrypt given string. Will decrypt if not provided.", Default = false)]
+            public bool IsEncryptMode { get; set; }
 
-            var (keyIdx, pathIdx) = (argsList.IndexOf("-key"), argsList.IndexOf("-path"));
-            bool hasRequiredArgs = (keyIdx != -1 && pathIdx != -1) && (keyIdx + 1 < args.Length && pathIdx + 1 < args.Length);
-            if (!hasRequiredArgs) {
-                string help = "-key and -path arguments are required.\nAdd -e flag to encrypt file contents instead of decrypting.";
-                Console.WriteLine(help);
-                System.Environment.Exit(1);
+            [Option('k', "key", Required = true, HelpText = "Key for encryption/decryption.")]
+            public string Key { get; set; }
+
+            [Option('s', "string", Required = true, HelpText = "String text target.")]
+            public string Text { get; set; }
+
+            [Usage(ApplicationAlias = "csencryption")]
+            public static IEnumerable<Example> Examples {
+                get {
+                    yield return new Example("Encrypt a string", new StringOptions { IsEncryptMode = true, Key = "secretKey", Text = "plaintext" });
+                    yield return new Example("Decrypt a string", new StringOptions { Key = "secretKey", Text = "ciphertext" });
+                }
             }
-
-            string key = argsList[keyIdx + 1];
-            string path = argsList[pathIdx + 1];
-
-            return new Args(isEncryptMode, key, path);
         }
 
+        static int RunStringMode(StringOptions opts) {
 
-        static void Main(string[] cliArgs) {
-            Args args = GetArgs(cliArgs);
-            if (args.isEncryptMode) {
-                Console.WriteLine("Encrypt mode active");
-            }
-            else {
-                Console.WriteLine("Decrypt mode active");
-            }
-            
-            string text = System.IO.File.ReadAllText(args.path);
-
-            if (string.IsNullOrEmpty(text)) {
-                Console.WriteLine("Error: File contains no content.");
-                System.Environment.Exit(2);
-            }
-            if (string.IsNullOrEmpty(args.key)) {
-                Console.WriteLine("Error: Key cannot be null");
-                System.Environment.Exit(3);
-            }
-
-            try {
-                WriteEffect writeFile = args.isEncryptMode
-                    ? AESFile.encrypt(text, args.key, args.path)
-                    : AESFile.decrypt(text, args.key, args.path);
+            if (opts.IsEncryptMode) {
                 try {
-                    writeFile.write();
+                    string result = AESText.Encrypt(opts.Text, opts.Key);
+                    Console.WriteLine("Encrypted text:");
+                    Console.WriteLine(result);
                 } catch {
-                    Console.WriteLine("Exception while writing file");
-                    System.Environment.Exit(6);
+                    Console.WriteLine("Error: Could not encrypt the provided string.");
+                    return 2;
                 }
-            } catch {
-                if (args.isEncryptMode) {
-                    Console.WriteLine("Exception while encrypting data.");
-                    System.Environment.Exit(4);
-                } else {
-                    Console.WriteLine("Exception while decrypting data. Key may be invalid.");
-                    System.Environment.Exit(5);
+            } else {
+                try {
+                    string result = AESText.Decrypt(opts.Text, opts.Key);
+                    Console.WriteLine("Decrypted text:");
+                    Console.WriteLine(result);
+                } catch {
+                    Console.WriteLine("Error: Could not decrypt the provided string. Key may be invalid.");
+                    return 3;
                 }
             }
+            return 0;
+        }
+
+        static int RunFileMode(FileOptions opts) {
+
+            // assume path provided is a single file
+            string[] files = new string[] { opts.Path };
+
+            if (Util.File.IsDirectory(opts.Path)) {
+                files = Directory.GetFiles(opts.Path, "*.txt");
+            }
+
+            var effects = files
+                .Choose<string, WriteEffect>(filePath => {
+                    return AESFile.ProcessFile(opts.Key, opts.IsEncryptMode, filePath, opts.OutputPath);
+                })
+                .ToList();
+            
+            if (effects.Length() == 0) {
+                return 4;
+            }
+
+            // list all files that can be written
+            Console.WriteLine("File(s) that can be written successfully: ");
+            effects.ForEach(e => Console.WriteLine(e.path));
+            Console.WriteLine("Proceed (y/n) ? ");
+
+            string proceed = Console.ReadLine();
+            if (string.IsNullOrEmpty(proceed) || proceed == "n") {
+                Console.WriteLine("Exiting...");
+            } else {
+                effects.ToList().ForEach(e => e.write());
+            }
+            return 0;
+        }
+
+        static int Main(string[] args) {
+            return Parser.Default.ParseArguments<FileOptions, StringOptions>(args)
+                .MapResult(
+                    (FileOptions opts) => RunFileMode(opts),
+                    (StringOptions opts) => RunStringMode(opts),
+                    errs => 1
+                );
         }
     }
 }

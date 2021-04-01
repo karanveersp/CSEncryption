@@ -1,35 +1,66 @@
 using System;
 using System.IO;
+
 using SimpleAES;
+using LanguageExt;
+using static LanguageExt.Prelude;
+
+using EncryptionApp.Util;
 
 namespace EncryptionApp {
-    using Util;
-    
+
+    public class AESText {
+        public static string Encrypt(string plainText, string key) => AES256.Encrypt(plainText, key);
+        public static string Decrypt(string cipherText, string key) => AES256.Decrypt(cipherText, key);
+    }
+
     public class AESFile {
-        public static WriteEffect encrypt(string plainText, string key, string path) {
+        public static WriteEffect Encrypt(string plainText, string key, string outputPath) {
+
             string cipherText = AES256.Encrypt(plainText, key);
 
-            var fileName = Path.GetFileNameWithoutExtension(path);
-            var dirPath = Path.GetDirectoryName(path);
-            string encFileName = fileName.Contains("plain") || fileName.Contains("cipher")
-                ? fileName.Replace("plain", "cipher") + Path.GetExtension(path)
-                : fileName + "_cipher" + Path.GetExtension(path);
-            var encFilePath = Path.Combine(dirPath, encFileName);
-
-            return new WriteEffect(cipherText, encFilePath, () => Console.WriteLine("Wrote encrypted file to: {0}", encFilePath));
+            return new WriteEffect(cipherText, outputPath, () => Console.WriteLine("Wrote encrypted file to: {0}", outputPath));
         }
 
-        public static WriteEffect decrypt(string cipherText, string key, string path) {
+        public static WriteEffect Decrypt(string cipherText, string key, string outputPath) {
+
             string plaintext = AES256.Decrypt(cipherText, key);
 
-            var fileName = Path.GetFileNameWithoutExtension(path);
-            var dirPath = Path.GetDirectoryName(path);
-            string decFileName = fileName.Contains("cipher") || fileName.Contains("plain")
-                ? fileName.Replace("cipher", "plain") + Path.GetExtension(path)
-                : fileName + "_plain" + Path.GetExtension(path);
-            var decFilePath = Path.Combine(dirPath, decFileName);
-
-            return new WriteEffect(plaintext, decFilePath, () => Console.WriteLine("Wrote decrypted file to: {0}", decFilePath));
+            return new WriteEffect(plaintext, outputPath, () => Console.WriteLine("Wrote decrypted file to: {0}", outputPath));
         }
+
+
+        public static Option<WriteEffect> ProcessFile(string key, bool isEncryptMode, string filePath, string outputPath) {
+
+            Option<WriteEffect> effect = None;
+
+            string fullOutputPath = getFullOutputPath(filePath, outputPath);
+            string text = System.IO.File.ReadAllText(filePath);
+
+
+            try {
+                WriteEffect e = isEncryptMode
+                    ? AESFile.Encrypt(text, key, fullOutputPath)
+                    : AESFile.Decrypt(text, key, fullOutputPath);
+                return Some(e);
+            } catch {
+                if (isEncryptMode) {
+                    Console.WriteLine($"Error: Could not encrypt data in '{filePath}'.");
+                } else {
+                    Console.WriteLine($"Error: Could not decrypt data in '{filePath}'. Key may be invalid.");
+                }
+                return None;
+            }
+        }
+
+
+        private static string getFullOutputPath(string filePath, string outputPath) {
+
+            if (Util.File.IsDirectory(outputPath)) {
+                return Path.Join(outputPath, Path.GetFileName(filePath));
+            }
+            return outputPath;
+        }
+
     }
 }
