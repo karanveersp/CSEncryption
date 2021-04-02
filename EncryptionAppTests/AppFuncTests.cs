@@ -1,34 +1,41 @@
-using System;
 using Xunit;
-using EncryptionApp;
-using EncryptionApp.Util;
-using System.IO;
+using AESLib;
 
 namespace EncryptionAppTests {
     public class AppFuncTests {
         [Fact]
         public void encodeReturnsNonNullWriteEffect() {
             var (plainText, key, outputPath) = ("Some data", "myKey", "OutputPath");
-            WriteEffect writeEffect = AESFile.Encrypt(plainText, key, outputPath);
+            var writeEffect = AES.Encrypt(plainText, key, outputPath);
 
-            Assert.NotNull(writeEffect);
+            Assert.True(writeEffect.IsSome);
         }
 
         [Fact]
         public void encryptReturnsEffectWithExpectedPath() {
             var (plainText, key, outputPath) = ("Some data", "myKey", "OutputPath\\Plain.txt");
-            WriteEffect e = AESFile.Encrypt(plainText, key, outputPath);
+            var e = AES.Encrypt(plainText, key, outputPath);
 
-            Assert.Equal("OutputPath\\Plain.txt", e.path);
+            string actualPath = e.Match<string>(
+                Some: v => v.path, 
+                None: () => ""
+            );
+
+            Assert.Equal("OutputPath\\Plain.txt", actualPath);
         }
 
         [Fact]
         public void decryptReturnsEffectWithExpectedPathAndData() {
             var (cipher, key, outputPath) = ("rb2QZTrhyr0Sfpgo7OzCNLt5jdtk5IH97VOG3STur4qAJVzRemUgb9B74EVOPxy/", "myKey", "Path\\To\\Plain.txt");
-            WriteEffect e = AESFile.Decrypt(cipher, key, outputPath);
-
-            Assert.Equal("Path\\To\\Plain.txt", e.path);
-            Assert.Equal("Some data", e.data);
+            var e = AES.Decrypt(cipher, key, outputPath);
+            
+            WriteEffect actual = e.Match(
+                Some: v => v,
+                None: () => null
+            );
+            
+            Assert.Equal("Path\\To\\Plain.txt", actual.path);
+            Assert.Equal("Some data", actual.data);
         }
     }
 }

@@ -3,7 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <AssemblyName>csencryption</AssemblyName>
+    <AssemblyName>cypher</AssemblyName>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

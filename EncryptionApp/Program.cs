@@ -4,10 +4,10 @@ using System.IO;
 using System.Linq;
 using CommandLine;
 using CommandLine.Text;
-using EncryptionApp.Util;
 using LanguageExt;
 
 namespace EncryptionApp {
+    using AESLib;
 
     class Program {
 
@@ -19,19 +19,20 @@ namespace EncryptionApp {
             [Option('k', "key", Required = true, HelpText = "Key for encryption/decryption.")]
             public string Key { get; set; }
 
-            [Option('p', "path", Required = true, HelpText = ".txt file path target. If path is a directory, all .txt files inside are targeted using the same key.")]
-            public string Path { get; set; }
+            [Option('i', "input", Required = true, HelpText = ".txt file path target. If path is a directory, all .txt files inside are targeted using the same key.")]
+            public string InputPath { get; set; }
 
-            [Option('o', "output", Required = true, HelpText = "Path to output directory or file. If directory, the output file will have the same name as the input file.")]
+            [Option('o', "output", Required = false, HelpText = "Path to output directory or file. If not provided, the output is shown in the console.")]
             public string OutputPath { get; set; }
 
-            [Usage(ApplicationAlias = "csencryption")]
+            [Usage(ApplicationAlias = "cypher")]
             public static IEnumerable<Example> Examples {
                 get {
-                    yield return new Example("Encrypt a file", new FileOptions { IsEncryptMode = true, Key = "secretKey", Path = "path/to/plain.txt", OutputPath = "out/dir" });
-                    yield return new Example("Decrypt a file", new FileOptions { Key = "secretKey", Path = "path/to/cipher.txt", OutputPath = "out/dir/plain.txt" });
-                    yield return new Example("Encrypt all .txt files in a folder", new FileOptions { IsEncryptMode = true, Key = "secretKey", Path = "path/to/dir", OutputPath = "out/dir" });
-                    yield return new Example("Decrypt all .txt files in a folder", new FileOptions { Key = "secretKey", Path = "path/to/dir", OutputPath = "out/dir" });
+                    yield return new Example("Encrypt file contents and output in the console", new FileOptions { IsEncryptMode = true, Key = "secretKey", InputPath = "path/to/plain.txt" });
+                    yield return new Example("Encrypt file contents and write to a new file", new FileOptions { IsEncryptMode = true, Key = "secretKey", InputPath = "path/to/plain.txt", OutputPath = "path/to/cipher.txt" });
+                    yield return new Example("Decrypt a file and write output to given directory with same filename", new FileOptions { Key = "secretKey", InputPath = "path/to/cipher.txt", OutputPath = "out/dir/" });
+                    yield return new Example("Encrypt all .txt files in a folder and write to given directory", new FileOptions { IsEncryptMode = true, Key = "secretKey", InputPath = "path/to/dir", OutputPath = "out/dir" });
+                    yield return new Example("Decrypt all .txt files in a folder and write to given directory", new FileOptions { Key = "secretKey", InputPath = "path/to/dir", OutputPath = "out/dir" });
                 }
             }
         }
@@ -47,7 +48,7 @@ namespace EncryptionApp {
             [Option('s', "string", Required = true, HelpText = "String text target.")]
             public string Text { get; set; }
 
-            [Usage(ApplicationAlias = "csencryption")]
+            [Usage(ApplicationAlias = "cypher")]
             public static IEnumerable<Example> Examples {
                 get {
                     yield return new Example("Encrypt a string", new StringOptions { IsEncryptMode = true, Key = "secretKey", Text = "plaintext" });
@@ -58,44 +59,83 @@ namespace EncryptionApp {
 
         static int RunStringMode(StringOptions opts) {
 
+            var result = opts.IsEncryptMode
+                ? AES.Encrypt(opts.Text, opts.Key)
+                : AES.Decrypt(opts.Text, opts.Key);
+
             if (opts.IsEncryptMode) {
-                try {
-                    string result = AESText.Encrypt(opts.Text, opts.Key);
-                    Console.WriteLine("Encrypted text:");
-                    Console.WriteLine(result);
-                } catch {
-                    Console.WriteLine("Error: Could not encrypt the provided string.");
-                    return 2;
-                }
-            } else {
-                try {
-                    string result = AESText.Decrypt(opts.Text, opts.Key);
-                    Console.WriteLine("Decrypted text:");
-                    Console.WriteLine(result);
-                } catch {
-                    Console.WriteLine("Error: Could not decrypt the provided string. Key may be invalid.");
+
+                return result.Match(
+                    Some: cipher => {
+                        Console.WriteLine("Encrypted text:\n");
+                        Console.WriteLine(cipher);
+                        return 0;
+                    },
+                    None: () => {
+                        Console.WriteLine("Error: Could not encrypt data.");
+                        return 2;
+                    }
+                );
+
+            }
+
+            return result.Match(
+                Some: plain => {
+                    Console.WriteLine("Decrypted text:\n");
+                    Console.WriteLine(plain);
+                    return 0;
+                },
+                None: () => {
+                    Console.WriteLine("Error: Could not decrypt data. Key may be invalid.");
                     return 3;
                 }
-            }
-            return 0;
+            );
         }
 
         static int RunFileMode(FileOptions opts) {
 
             // assume path provided is a single file
-            string[] files = new string[] { opts.Path };
+            string[] files = new string[] { opts.InputPath };
 
-            if (Util.File.IsDirectory(opts.Path)) {
-                files = Directory.GetFiles(opts.Path, "*.txt");
+            if (PathUtils.IsDirectory(opts.InputPath)) {
+                if (PathUtils.IsFile(opts.OutputPath)) {
+                    // cannot write results of processing all .txt files in a directory
+                    // to a single file.
+                    Console.WriteLine("OutputPath cannot be a file when InputPath is a directory.");
+                    return 5;
+                }
+                files = Directory.GetFiles(opts.InputPath, "*.txt");
+            }
+
+            if (string.IsNullOrEmpty(opts.OutputPath)) {
+                // print process results to console for each file
+                var returnCodes = files.ToList().Map(filePath => {
+                    StringOptions newOpts = new StringOptions();
+                    newOpts.Key = opts.Key;
+                    newOpts.Text = System.IO.File.ReadAllText(filePath);
+                    newOpts.IsEncryptMode = opts.IsEncryptMode;
+
+                    Console.WriteLine(new String(filePath).PadLeft(filePath.Length + 10,'-'));
+
+                    int code = RunStringMode(newOpts);
+
+                    Console.WriteLine(new String('-', filePath.Length + 10));
+                    Console.WriteLine();
+
+                    return code;
+
+                });
+                return returnCodes.Max();
             }
 
             var effects = files
                 .Choose<string, WriteEffect>(filePath => {
-                    return AESFile.ProcessFile(opts.Key, opts.IsEncryptMode, filePath, opts.OutputPath);
+                    return AES.ProcessFile(opts.Key, opts.IsEncryptMode, filePath, opts.OutputPath);
                 })
                 .ToList();
-            
+
             if (effects.Length() == 0) {
+                // error case where no file was successfully processed
                 return 4;
             }
 
@@ -112,6 +152,7 @@ namespace EncryptionApp {
             }
             return 0;
         }
+        
 
         static int Main(string[] args) {
             return Parser.Default.ParseArguments<FileOptions, StringOptions>(args)
