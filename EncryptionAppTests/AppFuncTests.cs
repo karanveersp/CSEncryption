@@ -26,7 +26,7 @@ namespace EncryptionAppTests {
 
         [Fact]
         public void decryptReturnsEffectWithExpectedPathAndData() {
-            var (cipher, key, outputPath) = ("rb2QZTrhyr0Sfpgo7OzCNLt5jdtk5IH97VOG3STur4qAJVzRemUgb9B74EVOPxy/", "myKey", "Path\\To\\Plain.txt");
+            var (cipher, key, outputPath) = ("U2FsdGVkX1920feeCwXEREEB8CQvZnqvkIR9ePjLtyY=", "myKey", "Path\\To\\Plain.txt");
             var e = AES.Decrypt(cipher, key, outputPath);
             
             WriteEffect actual = e.Match(

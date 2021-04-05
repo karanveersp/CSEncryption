@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-using SimpleAES;
+using AesEverywhere;
 using LanguageExt;
 using static LanguageExt.Prelude;
 
@@ -11,14 +11,14 @@ namespace AESLib {
     public static class AES {
         public static Option<string> Encrypt(string plainText, string key) {
             try {
-                return Some(AES256.Encrypt(plainText, key));
+                return Some(new AES256().Encrypt(plainText, key));
             } catch {
                 return None;
             }
         }
         public static Option<string> Decrypt(string cipherText, string key) {
             try {
-                return Some(AES256.Decrypt(cipherText, key));
+                return Some(new AES256().Decrypt(cipherText, key));
             } catch {
                 return None;
             }
