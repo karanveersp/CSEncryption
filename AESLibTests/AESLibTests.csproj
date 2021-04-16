@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EncryptionApp\EncryptionApp.csproj" />
+    <ProjectReference Include="..\AESLib\AESLib.csproj" />
   </ItemGroup>
 
 </Project>

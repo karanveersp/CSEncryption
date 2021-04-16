@@ -8,6 +8,20 @@ This project can be run using the `dotnet` cli. Type `dotnet run file` or `dotne
 
 The original file is not overwritten unless the output path and input path the user provides are the same.
 
+## Solution Projects
+
+### AESLib 
+
+This class library project contains a class with static functions that wrap an implementation of the AES encryption algorithm.
+
+### AESLibTests
+
+Unit test project for AESLib.
+
+### CypherCLI
+
+The CLI app can be used to perform AES encryption on .txt files, or strings.
+
 ## Encryption
 
 Provide the `-e` or `--encrypt` flag to enable encryption mode.

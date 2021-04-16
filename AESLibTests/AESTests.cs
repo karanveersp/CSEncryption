@@ -1,8 +1,8 @@
 using Xunit;
 using AESLib;
 
-namespace EncryptionAppTests {
-    public class AppFuncTests {
+namespace AESLibTests {
+    public class AESTests {
         [Fact]
         public void encodeReturnsNonNullWriteEffect() {
             var (plainText, key, outputPath) = ("Some data", "myKey", "OutputPath");

@@ -4,9 +4,8 @@ using System.IO;
 using System.Linq;
 using CommandLine;
 using CommandLine.Text;
-using LanguageExt;
 
-namespace EncryptionApp {
+namespace CypherCLI {
     using AESLib;
 
     class Program {
