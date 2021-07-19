@@ -1,0 +1,55 @@
+﻿<Page
+    x:Class="CypherWinUI.Pages.PastebinPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CypherWinUI.Pages"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    >
+    <Grid Margin="25,5" ColumnSpacing="30" RowSpacing="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <ToggleSwitch x:Name="ModeToggle"  Header="Mode" OffContent="Decrypt"
+                      OnContent="Encrypt"
+                      VerticalAlignment="Top"
+                      IsOn="{x:Bind viewModel.IsEncryptMode, Mode=TwoWay}" 
+                      Toggled="ModeToggle_Toggled"/>
+
+        <TextBox Grid.Column="1" x:Name="TextInput" 
+                 TextWrapping="Wrap" AcceptsReturn="True"
+                 Height="300" Width="500" 
+                 Header="{x:Bind viewModel.TextInputHeader, Mode=OneWay}" 
+                 Text="{x:Bind viewModel.TextContent, Mode=TwoWay}"/>
+
+        <StackPanel Grid.Column="2">
+            <TextBlock Text="Output"/>
+            <TextBlock x:Name="Output" Width="500" IsTextSelectionEnabled="True" SelectionHighlightColor="Green"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Grid.Column="1">
+            <PasswordBox x:Name="KeyInput" HorizontalAlignment="Left"
+                     Header="Secret Key"
+                     Width="300" PasswordChanged="KeyInput_PasswordChanged"/>
+            <TextBlock x:Name="KeyStatusText"/>
+        </StackPanel>
+
+
+        <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1" Spacing="10">
+            <Button  x:Name="SubmitButton" Content="{x:Bind viewModel.ButtonContent, Mode=OneWay}" Click="SubmitButton_Click"/>
+            <Button x:Name="ClearButton" Content="Clear" Click="ClearButton_Click"/>
+        </StackPanel>
+        
+    </Grid>
+</Page>
